@@ -27,7 +27,7 @@ func main() {
 	r := gin.Default()
 
 	r.GET("/api/hello", service.Hello)
-	//r.POST("/api/set_name", service.SetName)
+	r.POST("/api/set_name", service.SetName)
 
 	r.Run(":8000")
 }
