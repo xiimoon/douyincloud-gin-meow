@@ -15,105 +15,106 @@ limitations under the License.
 */
 package component
 
-import (
-	"context"
-	"fmt"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-	"net/url"
-	"os"
-	"time"
-)
+// import (
+// 	"context"
+// 	"fmt"
+// 	"net/url"
+// 	"os"
+// 	"time"
 
-var (
-	// mongo地址
-	mongoAddr = ""
-	// mongo用户名
-	mongoUserName = ""
-	// mongo密码
-	mongoPassWord = ""
-)
+// 	"go.mongodb.org/mongo-driver/bson"
+// 	"go.mongodb.org/mongo-driver/mongo"
+// 	"go.mongodb.org/mongo-driver/mongo/options"
+// )
 
-const collectionName = "demo"
+// var (
+// 	// mongo地址
+// 	mongoAddr = ""
+// 	// mongo用户名
+// 	mongoUserName = ""
+// 	// mongo密码
+// 	mongoPassWord = ""
+// )
 
-type mongoComponent struct {
-	client   *mongo.Client
-	dataBase string
-}
+// const collectionName = "demo"
 
-type model struct {
-	Key   string `bson:"key"`   //类型
-	Value string `bson:"value"` //值
-}
+// type mongoComponent struct {
+// 	client   *mongo.Client
+// 	dataBase string
+// }
 
-func (m *mongoComponent) GetName(ctx context.Context, key string) (name string, err error) {
+// type model struct {
+// 	Key   string `bson:"key"`   //类型
+// 	Value string `bson:"value"` //值
+// }
 
-	coll := m.client.Database(m.dataBase).Collection(collectionName)
-	doc := &model{}
+// func (m *mongoComponent) GetName(ctx context.Context, key string) (name string, err error) {
 
-	filter := bson.M{"key": key}
-	result := coll.FindOne(ctx, filter)
+// 	coll := m.client.Database(m.dataBase).Collection(collectionName)
+// 	doc := &model{}
 
-	if err := result.Decode(doc); err != nil {
-		return "", err
-	}
-	return doc.Value, err
-}
+// 	filter := bson.M{"key": key}
+// 	result := coll.FindOne(ctx, filter)
 
-func (m *mongoComponent) SetName(ctx context.Context, key string, name string) error {
+// 	if err := result.Decode(doc); err != nil {
+// 		return "", err
+// 	}
+// 	return doc.Value, err
+// }
 
-	coll := m.client.Database(m.dataBase).Collection(collectionName)
+// func (m *mongoComponent) SetName(ctx context.Context, key string, name string) error {
 
-	filter := bson.M{"key": key}
-	update := bson.M{"$set": model{Key: key, Value: name}}
-	_, err := coll.UpdateMany(ctx, filter, update)
-	if err != nil {
-		return err
-	}
+// 	coll := m.client.Database(m.dataBase).Collection(collectionName)
 
-	return nil
-}
+// 	filter := bson.M{"key": key}
+// 	update := bson.M{"$set": model{Key: key, Value: name}}
+// 	_, err := coll.UpdateMany(ctx, filter, update)
+// 	if err != nil {
+// 		return err
+// 	}
 
-//NewMongoComponent 新建一个mongodbComponent，其实现了HelloWorldComponent接口
-func NewMongoComponent() *mongoComponent {
+// 	return nil
+// }
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	tmp, err := url.Parse(mongoAddr)
-	if err != nil {
-		panic("mongo addr parse error")
-	}
-	authSource := tmp.Query().Get("authSource")
-	credential := options.Credential{
-		AuthSource: authSource,
-		Username:   mongoUserName,
-		Password:   mongoPassWord,
-	}
-	mongoUrl := fmt.Sprintf("mongodb://%s", mongoAddr)
+// // NewMongoComponent 新建一个mongodbComponent，其实现了HelloWorldComponent接口
+// func NewMongoComponent() *mongoComponent {
 
-	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUrl).SetAuth(credential))
-	if err != nil {
-		fmt.Printf("mongoClient init error. err %s\n", err)
-		panic("mongo connect error")
-	}
+// 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+// 	defer cancel()
+// 	tmp, err := url.Parse(mongoAddr)
+// 	if err != nil {
+// 		panic("mongo addr parse error")
+// 	}
+// 	authSource := tmp.Query().Get("authSource")
+// 	credential := options.Credential{
+// 		AuthSource: authSource,
+// 		Username:   mongoUserName,
+// 		Password:   mongoPassWord,
+// 	}
+// 	mongoUrl := fmt.Sprintf("mongodb://%s", mongoAddr)
 
-	dataBase := "demo"
-	doc := &model{
-		Key:   "name",
-		Value: Mongo,
-	}
-	_, err = client.Database(dataBase).Collection(collectionName).InsertOne(context.TODO(), doc)
-	if err != nil {
-		fmt.Printf("mongoClient init error. err %s\n", err)
-		panic("mongo init error")
-	}
-	return &mongoComponent{client, dataBase}
-}
+// 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(mongoUrl).SetAuth(credential))
+// 	if err != nil {
+// 		fmt.Printf("mongoClient init error. err %s\n", err)
+// 		panic("mongo connect error")
+// 	}
 
-//init 项目启动时，会从环境变量中获取mongodb的地址，用户名和密码
-func init() {
-	mongoAddr = os.Getenv("MONGO_ADDRESS")
-	mongoUserName = os.Getenv("MONGO_USERNAME")
-	mongoPassWord = os.Getenv("MONGO_PASSWORD")
-}
+// 	dataBase := "demo"
+// 	doc := &model{
+// 		Key:   "name",
+// 		Value: Mongo,
+// 	}
+// 	_, err = client.Database(dataBase).Collection(collectionName).InsertOne(context.TODO(), doc)
+// 	if err != nil {
+// 		fmt.Printf("mongoClient init error. err %s\n", err)
+// 		panic("mongo init error")
+// 	}
+// 	return &mongoComponent{client, dataBase}
+// }
+
+// // init 项目启动时，会从环境变量中获取mongodb的地址，用户名和密码
+// func init() {
+// 	mongoAddr = os.Getenv("MONGO_ADDRESS")
+// 	mongoUserName = os.Getenv("MONGO_USERNAME")
+// 	mongoPassWord = os.Getenv("MONGO_PASSWORD")
+// }

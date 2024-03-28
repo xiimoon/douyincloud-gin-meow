@@ -16,49 +16,46 @@ limitations under the License.
 package service
 
 import (
+	"douyincloud-gin-demo/component"
+	"fmt"
+
 	"github.com/gin-gonic/gin"
 )
 
 func Hello(ctx *gin.Context) {
-	// target := ctx.Query("target")
-	// if target == "" {
-	// 	Failure(ctx, fmt.Errorf("param invalid"))
-	// 	return
-	// }
-	// fmt.Printf("target= %s\n", target)
-	// hello, err := component.GetComponent(target)
-	// if err != nil {
-	// 	Failure(ctx, fmt.Errorf("param invalid"))
-	// 	return
-	// }
+	hello, err := component.GetComponent()
+	if err != nil {
+		Failure(ctx, fmt.Errorf("redis component not found"))
+		return
+	}
 
-	// name, err := hello.GetName(ctx, "name")
-	// if err != nil {
-	// 	Failure(ctx, err)
-	// 	return
-	// }
-	Success(ctx, "HELLO")
+	name, err := hello.GetName(ctx, "name")
+	if err != nil {
+		Failure(ctx, err)
+		return
+	}
+	Success(ctx, name)
 }
 
-// func SetName(ctx *gin.Context) {
-// 	var req SetNameReq
-// 	err := ctx.Bind(&req)
-// 	if err != nil {
-// 		Failure(ctx, err)
-// 		return
-// 	}
-// 	hello, err := component.GetComponent(req.Target)
-// 	if err != nil {
-// 		Failure(ctx, fmt.Errorf("param invalid"))
-// 		return
-// 	}
-// 	err = hello.SetName(ctx, "name", req.Name)
-// 	if err != nil {
-// 		Failure(ctx, err)
-// 		return
-// 	}
-// 	Success(ctx, "")
-// }
+func SetName(ctx *gin.Context) {
+	var req SetNameReq
+	err := ctx.Bind(&req)
+	if err != nil {
+		Failure(ctx, err)
+		return
+	}
+	hello, err := component.GetComponent()
+	if err != nil {
+		Failure(ctx, fmt.Errorf("redis component not found"))
+		return
+	}
+	err = hello.SetName(ctx, "name", req.Name)
+	if err != nil {
+		Failure(ctx, err)
+		return
+	}
+	Success(ctx, "")
+}
 
 func Failure(ctx *gin.Context, err error) {
 	resp := &Resp{
@@ -84,8 +81,8 @@ type HelloResp struct {
 }
 
 type SetNameReq struct {
-	Target string `json:"target"`
-	Name   string `json:"name"`
+	//Target string `json:"target"`
+	Name string `json:"name"`
 }
 
 type Resp struct {

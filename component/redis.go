@@ -18,8 +18,9 @@ package component
 import (
 	"context"
 	"fmt"
-	"github.com/go-redis/redis/v8"
 	"os"
+
+	"github.com/go-redis/redis/v8"
 )
 
 var (
@@ -44,7 +45,7 @@ func (r *redisComponent) SetName(ctx context.Context, key string, name string) e
 	return err
 }
 
-//NewRedisComponent 初始化一个实现了HelloWorldComponent接口的RedisComponent
+// NewRedisComponent 初始化一个实现了HelloWorldComponent接口的RedisComponent
 func NewRedisComponent() *redisComponent {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     redisAddr,
@@ -62,7 +63,7 @@ func NewRedisComponent() *redisComponent {
 	}
 }
 
-//init 项目启动时会从环境变量中获取
+// init 项目启动时会从环境变量中获取
 func init() {
 	redisAddr = os.Getenv("REDIS_ADDRESS")
 	redisUserName = os.Getenv("REDIS_USERNAME")
