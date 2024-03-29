@@ -41,6 +41,7 @@ func (r *redisComponent) GetName(ctx context.Context, key string) (name string, 
 }
 
 func (r *redisComponent) SetName(ctx context.Context, key string, name string) error {
+	fmt.Printf("try set %s->%s", key, name)
 	_, err := r.client.Set(ctx, key, name, 0).Result()
 	return err
 }
