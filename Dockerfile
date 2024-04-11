@@ -13,13 +13,12 @@ WORKDIR /opt/application
 
 COPY --from=builder /app/main /app/run.sh /opt/application/
 
+USER root
 # 安装ca-certificates，并更新证书（确保证书是最新的）
-RUN apk --no-cache add ca-certificates && \
+RUN apk update && \
+    apk --no-cache add ca-certificates && \
+    apk upgrade --available && \
     update-ca-certificates && \
     chmod -R 777 /opt/application/run.sh
-
-USER root
-
-RUN chmod -R 777 /opt/application/run.sh
 
 CMD /opt/application/run.sh
