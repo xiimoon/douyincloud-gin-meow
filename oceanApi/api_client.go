@@ -2,8 +2,12 @@ package oceanApi
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/hex"
 	"encoding/json"
-	"io"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -11,13 +15,14 @@ import (
 )
 
 type APIClient struct {
-	BaseURL       string
-	HTTPClient    *http.Client
-	AppID         string
-	Secret        string
-	AccessToken   string
-	mu            sync.Mutex
-	refreshTicker *time.Ticker
+	BaseURL              string
+	HTTPClient           *http.Client
+	AppID                string
+	Secret               string
+	PublicKeyFingerprint string
+	AccessToken          string
+	mu                   sync.Mutex
+	refreshTicker        *time.Ticker
 }
 
 type APIResponse struct {
@@ -29,139 +34,88 @@ type APIResponse struct {
 	} `json:"data"`
 }
 
-func NewAPIClient(baseURL, appID, secret string) *APIClient {
+func NewAPIClient(baseURL, appID, secret, publicKeyFingerprint string) *APIClient {
 	client := &APIClient{
-		BaseURL:    baseURL,
-		HTTPClient: &http.Client{},
-		AppID:      appID,
-		Secret:     secret,
+		BaseURL:              baseURL,
+		AppID:                appID,
+		Secret:               secret,
+		PublicKeyFingerprint: publicKeyFingerprint,
 	}
-	client.refreshToken() // 初始化时获取token
+	client.configureHTTPClient()
+	client.refreshToken()
 	return client
 }
 
+func (client *APIClient) configureHTTPClient() {
+	client.HTTPClient = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true, // 注意: 实际部署时应谨慎使用
+				VerifyPeerCertificate: func(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) error {
+					for _, cert := range verifiedChains[0] {
+						fingerprint := sha256.Sum256(cert.Raw)
+						fp := hex.EncodeToString(fingerprint[:])
+						if fp == client.PublicKeyFingerprint {
+							return nil // 指纹匹配，证书验证成功
+						}
+					}
+					return fmt.Errorf("TLS certificate verification failed. None of the peer certificates match the expected public key fingerprint")
+				},
+			},
+		},
+	}
+}
+
 func (client *APIClient) refreshToken() {
-	client.mu.Lock()
-	defer client.mu.Unlock()
-
-	// Initial backoff interval is 1 second.
-	backoffInterval := 1 * time.Second
-
-	for {
-		requestData := map[string]string{
-			"appid":      client.AppID,
-			"secret":     client.Secret,
-			"grant_type": "client_credential",
-		}
-
-		jsonData, err := json.Marshal(requestData)
-		if err != nil {
-			log.Printf("Error marshalling token request data: %v", err)
-			return
-		}
-
-		req, err := http.NewRequest("POST", client.BaseURL, bytes.NewBuffer(jsonData))
-		if err != nil {
-			log.Printf("Error creating token request: %v", err)
-			return
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err := client.HTTPClient.Do(req)
-		if err != nil {
-			log.Printf("Error sending token request: %v", err)
-			time.Sleep(backoffInterval)
-			backoffInterval *= 2 // Double the backoff interval for the next retry.
-			continue
-		}
-		defer resp.Body.Close()
-
-		var apiResponse APIResponse
-		if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
-			log.Printf("Error decoding token response: %v", err)
-			return
-		}
-
-		if apiResponse.ErrNo != 0 {
-			log.Printf("API error: %s (%d)", apiResponse.ErrTips, apiResponse.ErrNo)
-			time.Sleep(backoffInterval)
-			backoffInterval *= 2 // Double the backoff interval for the next retry.
-			continue
-		}
-
-		client.AccessToken = apiResponse.Data.AccessToken
-
-		expiresDuration := time.Duration(apiResponse.Data.ExpiresIn-300) * time.Second
-		if client.refreshTicker != nil {
-			client.refreshTicker.Stop()
-		}
-		client.refreshTicker = time.NewTicker(expiresDuration)
-		go func() {
-			for range client.refreshTicker.C {
-				client.refreshToken()
-			}
-		}()
-
-		break // Token refreshed successfully, exit the loop.
+	// 构造获取AccessToken的请求
+	requestData := map[string]string{
+		"appid":      client.AppID,
+		"secret":     client.Secret,
+		"grant_type": "client_credential",
 	}
-}
 
-// Here you would add your Get, Post, or other HTTP method functions
-// that utilize the AccessToken for authentication with the API.
-// Get sends an HTTP GET request and parses the JSON response.
-func (client *APIClient) Get(endpoint string, response interface{}) error {
-	req, err := http.NewRequest("GET", client.BaseURL+endpoint, nil)
+	jsonData, err := json.Marshal(requestData)
 	if err != nil {
-		return err
+		log.Printf("Error marshalling token request data: %v", err)
+		return
 	}
-	req.Header.Set("Authorization", "Bearer "+client.AccessToken)
 
-	resp, err := client.HTTPClient.Do(req)
+	req, err := http.NewRequest("POST", client.BaseURL+"/mgplatform/api/apps/v2/token", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	if err := json.Unmarshal(body, &response); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Post sends an HTTP POST request with JSON data and parses the JSON response.
-func (client *APIClient) Post(endpoint string, requestData interface{}, response interface{}) error {
-	data, err := json.Marshal(requestData)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest("POST", client.BaseURL+endpoint, bytes.NewBuffer(data))
-	if err != nil {
-		return err
+		log.Printf("Error creating token request: %v", err)
+		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+client.AccessToken)
 
 	resp, err := client.HTTPClient.Do(req)
 	if err != nil {
-		return err
+		log.Printf("Error sending token request: %v", err)
+		return
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
+	var apiResponse APIResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
+		log.Printf("Error decoding token response: %v", err)
+		return
 	}
 
-	if err := json.Unmarshal(body, &response); err != nil {
-		return err
+	if apiResponse.ErrNo != 0 {
+		log.Printf("API error: %s (%d)", apiResponse.ErrTips, apiResponse.ErrNo)
+		return
 	}
 
-	return nil
+	client.AccessToken = apiResponse.Data.AccessToken
+
+	// 设置定时器以在token即将过期时自动刷新
+	expiresDuration := time.Duration(apiResponse.Data.ExpiresIn-300) * time.Second
+	if client.refreshTicker != nil {
+		client.refreshTicker.Stop()
+	}
+	client.refreshTicker = time.NewTicker(expiresDuration)
+	go func() {
+		for range client.refreshTicker.C {
+			client.refreshToken()
+		}
+	}()
 }

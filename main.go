@@ -20,7 +20,6 @@ import (
 	"douyincloud-gin-demo/oceanApi"
 	"douyincloud-gin-demo/service"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -56,19 +55,9 @@ func main() {
 
 	scheduleTask() // 设置定时任务
 
-	client := oceanApi.NewAPIClient("https://minigame.zijieapi.com/mgplatform/api/apps/v2/token", "ttb18ac7372eb8b0ba02", "8685aec0164d0b6bb6e4d8f71ca8207c152a249e")
+	publicKeyFingerprint := "094c439a85be75a907cbaff3335e5b4ef759db5e88fa890289f6b2fc951ebba6"
 
-	// 定义用于接收响应的结构体变量
-	var responseData oceanApi.APIResponse
-
-	// 发送GET请求
-	err := client.Get("/your-endpoint", &responseData)
-	if err != nil {
-		log.Fatalf("Failed to send request: %v", err)
-	}
-
-	// 打印响应数据
-	fmt.Printf("Response data: %+v\n", responseData)
+	oceanApi.NewAPIClient("https://minigame.zijieapi.com/mgplatform/api/apps/v2/token", "ttb18ac7372eb8b0ba02", "8685aec0164d0b6bb6e4d8f71ca8207c152a249e", publicKeyFingerprint)
 
 	r := gin.Default()
 
