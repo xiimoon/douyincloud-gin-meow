@@ -17,13 +17,59 @@ package main
 
 import (
 	"douyincloud-gin-demo/component"
+	"douyincloud-gin-demo/oceanApi"
 	"douyincloud-gin-demo/service"
+	"fmt"
+	"log"
+	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/robfig/cron/v3"
 )
+
+func scheduleTask() {
+	c := cron.New(cron.WithSeconds()) // 创建一个新的cron实例，注意我们不一定需要到秒的精度，但这里为了通用性包含了
+
+	// 每天早上7点执行的任务
+	_, err := c.AddFunc("0 0 7 * * *", func() {
+		fmt.Println("Executing daily morning task at", time.Now().Format("2006-01-02 15:04:05"))
+	})
+	if err != nil {
+		fmt.Printf("Error scheduling daily morning task: %s\n", err)
+		return
+	}
+
+	// 每小时的05分执行的任务
+	_, err = c.AddFunc("0 5 * * * *", func() {
+		fmt.Println("Executing hourly task at", time.Now().Format("2006-01-02 15:04:05"))
+	})
+	if err != nil {
+		fmt.Printf("Error scheduling hourly task: %s\n", err)
+		return
+	}
+
+	c.Start() // 启动cron调度器
+}
 
 func main() {
 	component.InitComponents()
+
+	scheduleTask() // 设置定时任务
+
+	client := oceanApi.NewAPIClient("https://minigame.zijieapi.com/mgplatform/api/apps/v2/token", "ttb18ac7372eb8b0ba02", "8685aec0164d0b6bb6e4d8f71ca8207c152a249e")
+
+	// 定义用于接收响应的结构体变量
+	var responseData oceanApi.APIResponse
+
+	// 发送GET请求
+	err := client.Get("/your-endpoint", &responseData)
+	if err != nil {
+		log.Fatalf("Failed to send request: %v", err)
+	}
+
+	// 打印响应数据
+	fmt.Printf("Response data: %+v\n", responseData)
+
 	r := gin.Default()
 
 	r.GET("/api/hello", service.Hello)

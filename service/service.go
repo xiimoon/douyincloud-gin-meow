@@ -57,6 +57,11 @@ func SetName(ctx *gin.Context) {
 	Success(ctx, "")
 }
 
+func Active(ctx *gin.Context) {
+
+	Success(ctx, "active")
+}
+
 func Failure(ctx *gin.Context, err error) {
 	resp := &Resp{
 		ErrNo:  -1,
