@@ -17,7 +17,6 @@ package main
 
 import (
 	"douyincloud-gin-meow/component"
-	"douyincloud-gin-meow/oceanApi"
 	"douyincloud-gin-meow/service"
 	"fmt"
 	"time"
@@ -55,7 +54,7 @@ func main() {
 
 	//scheduleTask() // 设置定时任务
 
-	oceanApi.NewAPIClient("https://minigame.zijieapi.com/mgplatform/api/apps/v2/token", "ttb18ac7372eb8b0ba02", "8685aec0164d0b6bb6e4d8f71ca8207c152a249e")
+	//oceanApi.NewAPIClient("https://minigame.zijieapi.com/mgplatform/api/apps/v2/token", "ttb18ac7372eb8b0ba02", "8685aec0164d0b6bb6e4d8f71ca8207c152a249e")
 
 	r := gin.Default()
 
