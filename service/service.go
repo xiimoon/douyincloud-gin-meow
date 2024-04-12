@@ -16,7 +16,7 @@ limitations under the License.
 package service
 
 import (
-	"douyincloud-gin-demo/component"
+	"douyincloud-gin-meow/component"
 	"fmt"
 
 	"github.com/gin-gonic/gin"

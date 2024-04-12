@@ -1,4 +1,4 @@
-module douyincloud-gin-demo
+module douyincloud-gin-meow
 
 go 1.18
 

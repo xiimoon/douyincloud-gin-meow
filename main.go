@@ -16,9 +16,9 @@ limitations under the License.
 package main
 
 import (
-	"douyincloud-gin-demo/component"
-	"douyincloud-gin-demo/oceanApi"
-	"douyincloud-gin-demo/service"
+	"douyincloud-gin-meow/component"
+	"douyincloud-gin-meow/oceanApi"
+	"douyincloud-gin-meow/service"
 	"fmt"
 	"time"
 
