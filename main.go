@@ -53,11 +53,9 @@ func scheduleTask() {
 func main() {
 	component.InitComponents()
 
-	scheduleTask() // 设置定时任务
+	//scheduleTask() // 设置定时任务
 
-	publicKeyFingerprint := "094c439a85be75a907cbaff3335e5b4ef759db5e88fa890289f6b2fc951ebba6"
-
-	oceanApi.NewAPIClient("https://minigame.zijieapi.com/mgplatform/api/apps/v2/token", "ttb18ac7372eb8b0ba02", "8685aec0164d0b6bb6e4d8f71ca8207c152a249e", publicKeyFingerprint)
+	oceanApi.NewAPIClient("https://minigame.zijieapi.com/mgplatform/api/apps/v2/token", "ttb18ac7372eb8b0ba02", "8685aec0164d0b6bb6e4d8f71ca8207c152a249e")
 
 	r := gin.Default()
 
