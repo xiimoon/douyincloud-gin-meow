@@ -19,9 +19,18 @@ import (
 	"context"
 )
 
-type HelloWorldComponent interface {
-	GetName(ctx context.Context, key string) (name string, err error)
-	SetName(ctx context.Context, key string, name string) error
+type AdTracking interface {
+	// SetClickIDIfAbsent 设置 openId 对应的 clickId，如果 openId 已经存在则不改变
+	SetClickIDIfAbsent(ctx context.Context, openId, clickId string) error
+
+	// GetClickIDByOpenID 读取 openId 对应的 clickId
+	GetClickIDByOpenID(ctx context.Context, openId string) (string, error)
+
+	// IncImpression 增加 openId 对应的 impression 值
+	IncImpression(ctx context.Context, openId string) error
+
+	// GetImpressionByOpenID 读取 openId 对应的 impression 值
+	GetImpressionByOpenID(ctx context.Context, openId string) (int, error)
 }
 
 // const Mongo = "mongodb"
@@ -33,7 +42,7 @@ var (
 )
 
 // GetComponent 通过传入的component的名称返回实现了HelloWorldComponent接口的component
-func GetComponent() (HelloWorldComponent, error) {
+func GetComponent() (AdTracking, error) {
 	return redisHelloWorld, nil
 }
 
@@ -41,13 +50,13 @@ func InitComponents() {
 	//mongoHelloWorld = NewMongoComponent()
 	redisHelloWorld = NewRedisComponent()
 
-	ctx := context.TODO()
-	// err := mongoHelloWorld.SetName(ctx, "name", "mongodb")
+	// ctx := context.TODO()
+	// // err := mongoHelloWorld.SetName(ctx, "name", "mongodb")
+	// // if err != nil {
+	// // 	panic(err)
+	// // }
+	// err := redisHelloWorld.SetName(ctx, "name", "redis")
 	// if err != nil {
 	// 	panic(err)
 	// }
-	err := redisHelloWorld.SetName(ctx, "name", "redis")
-	if err != nil {
-		panic(err)
-	}
 }

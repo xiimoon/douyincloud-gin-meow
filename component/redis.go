@@ -19,6 +19,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/go-redis/redis/v8"
 )
@@ -36,14 +37,30 @@ type redisComponent struct {
 	client *redis.Client
 }
 
-func (r *redisComponent) GetName(ctx context.Context, key string) (name string, err error) {
-	return r.client.Get(ctx, key).Result()
+// SetClickIDIfAbsent 设置 openId 对应的 clickId，如果 openId 已经存在则不改变
+func (r *redisComponent) SetClickIDIfAbsent(ctx context.Context, openId, clickId string) error {
+	_, err := r.client.HSetNX(ctx, "open:"+openId, "clickId", clickId).Result()
+	return err
 }
 
-func (r *redisComponent) SetName(ctx context.Context, key string, name string) error {
-	fmt.Printf("try set %s->%s", key, name)
-	_, err := r.client.Set(ctx, key, name, 0).Result()
+// GetClickIDByOpenID 读取 openId 对应的 clickId
+func (r *redisComponent) GetClickIDByOpenID(ctx context.Context, openId string) (string, error) {
+	return r.client.HGet(ctx, "open:"+openId, "clickId").Result()
+}
+
+// IncImpression 增加 openId 对应的 impression 值
+func (r *redisComponent) IncImpression(ctx context.Context, openId string) error {
+	_, err := r.client.HIncrBy(ctx, "open:"+openId, "impression", 1).Result()
 	return err
+}
+
+// GetImpressionByOpenID 读取 openId 对应的 impression 值
+func (r *redisComponent) GetImpressionByOpenID(ctx context.Context, openId string) (int, error) {
+	result, err := r.client.HGet(ctx, "open:"+openId, "impression").Result()
+	if err != nil {
+		return 0, err
+	}
+	return strconv.Atoi(result)
 }
 
 // NewRedisComponent 初始化一个实现了HelloWorldComponent接口的RedisComponent

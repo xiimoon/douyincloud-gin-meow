@@ -58,8 +58,8 @@ func main() {
 
 	r := gin.Default()
 
-	r.GET("/api/hello", service.Hello)
-	r.POST("/api/set_name", service.SetName)
+	r.GET("/api/impression", service.Impression)
+	r.POST("/api/active", service.Active)
 
 	r.Run(":8000")
 }

@@ -1,167 +1,78 @@
+// oceanApi 包用于向 Ocean Engine 的 API 发送请求。
 package oceanApi
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
-	"sync"
 	"time"
 )
 
-type APIClient struct {
-	BaseURL       string
-	HTTPClient    *http.Client
-	AppID         string
-	Secret        string
-	AccessToken   string
-	mu            sync.Mutex
-	refreshTicker *time.Ticker
+type Client struct {
+	httpClient *http.Client
+	BaseURL    string
 }
 
-type APIResponse struct {
-	ErrNo   int    `json:"err_no"`
-	ErrTips string `json:"err_tips"`
-	Data    struct {
-		AccessToken string `json:"access_token"`
-		ExpiresIn   int    `json:"expires_in"`
-	} `json:"data"`
+// RequestData 定义了发送到 Ocean Engine 的 JSON 结构。
+type RequestData struct {
+	EventType string  `json:"event_type"`
+	Context   Context `json:"context"`
+	Timestamp int64   `json:"timestamp"`
 }
 
-func NewAPIClient(baseURL, appID, secret string) *APIClient {
-	client := &APIClient{
-		BaseURL:    baseURL,
-		HTTPClient: &http.Client{},
-		AppID:      appID,
-		Secret:     secret,
-	}
-	client.refreshToken() // 初始化时获取token
-	return client
+// Context 定义了请求的 Context 部分。
+type Context struct {
+	Ad AdInfo `json:"ad"`
 }
 
-func (client *APIClient) refreshToken() {
-	client.mu.Lock()
-	defer client.mu.Unlock()
+// AdInfo 定义了广告相关信息。
+type AdInfo struct {
+	Callback string `json:"callback"`
+}
 
-	// Initial backoff interval is 1 second.
-	backoffInterval := 1 * time.Second
-
-	for {
-		requestData := map[string]string{
-			"appid":      client.AppID,
-			"secret":     client.Secret,
-			"grant_type": "client_credential",
-		}
-
-		jsonData, err := json.Marshal(requestData)
-		if err != nil {
-			log.Printf("Error marshalling token request data: %v", err)
-			return
-		}
-
-		req, err := http.NewRequest("POST", client.BaseURL, bytes.NewBuffer(jsonData))
-		if err != nil {
-			log.Printf("Error creating token request: %v", err)
-			return
-		}
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err := client.HTTPClient.Do(req)
-		if err != nil {
-			log.Printf("Error sending token request: %v", err)
-			time.Sleep(backoffInterval)
-			backoffInterval *= 2 // Double the backoff interval for the next retry.
-			continue
-		}
-		defer resp.Body.Close()
-
-		var apiResponse APIResponse
-		if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
-			log.Printf("Error decoding token response: %v", err)
-			return
-		}
-
-		if apiResponse.ErrNo != 0 {
-			log.Printf("API error: %s (%d)", apiResponse.ErrTips, apiResponse.ErrNo)
-			time.Sleep(backoffInterval)
-			backoffInterval *= 2 // Double the backoff interval for the next retry.
-			continue
-		}
-
-		client.AccessToken = apiResponse.Data.AccessToken
-
-		expiresDuration := time.Duration(apiResponse.Data.ExpiresIn-300) * time.Second
-		if client.refreshTicker != nil {
-			client.refreshTicker.Stop()
-		}
-		client.refreshTicker = time.NewTicker(expiresDuration)
-		go func() {
-			for range client.refreshTicker.C {
-				client.refreshToken()
-			}
-		}()
-
-		break // Token refreshed successfully, exit the loop.
+func NewClient() *Client {
+	return &Client{
+		httpClient: &http.Client{},
+		BaseURL:    "http://analytics.oceanengine.com/api/v2",
 	}
 }
 
-// Here you would add your Get, Post, or other HTTP method functions
-// that utilize the AccessToken for authentication with the API.
-// Get sends an HTTP GET request and parses the JSON response.
-func (client *APIClient) Get(endpoint string, response interface{}) error {
-	req, err := http.NewRequest("GET", client.BaseURL+endpoint, nil)
+// SendConversion 发送转换事件到 Ocean Engine。
+func (c *Client) SendConversion(ctx context.Context, eventType string, clickid string) (string, error) {
+	data := RequestData{
+		EventType: eventType,
+		Context: Context{
+			Ad: AdInfo{
+				Callback: clickid,
+			},
+		},
+		Timestamp: time.Now().Unix(),
+	}
+
+	jsonData, err := json.Marshal(data)
 	if err != nil {
-		return err
+		return "", err
 	}
-	req.Header.Set("Authorization", "Bearer "+client.AccessToken)
 
-	resp, err := client.HTTPClient.Do(req)
+	req, err := http.NewRequestWithContext(ctx, "POST", c.BaseURL+"/conversion", bytes.NewBuffer(jsonData))
 	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
+		return "", err
 	}
 
-	if err := json.Unmarshal(body, &response); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Post sends an HTTP POST request with JSON data and parses the JSON response.
-func (client *APIClient) Post(endpoint string, requestData interface{}, response interface{}) error {
-	data, err := json.Marshal(requestData)
-	if err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest("POST", client.BaseURL+endpoint, bytes.NewBuffer(data))
-	if err != nil {
-		return err
-	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+client.AccessToken)
 
-	resp, err := client.HTTPClient.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	if err := json.Unmarshal(body, &response); err != nil {
-		return err
-	}
-
-	return nil
+	return string(body), nil
 }
