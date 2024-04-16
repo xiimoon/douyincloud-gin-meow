@@ -56,7 +56,10 @@ func Active(ctx *gin.Context) {
 	openId := ctx.GetHeader("X-TT-OPENID")
 	if openId == "" {
 		Failure(ctx, fmt.Errorf("X-TT-OPENID null"))
+		return
 	}
+
+	fmt.Println("openId:", openId)
 
 	adtracker, err := component.GetComponent()
 	if err != nil {
@@ -67,13 +70,14 @@ func Active(ctx *gin.Context) {
 	_, err = adtracker.GetClickIDByOpenID(ctx, openId)
 	if err != nil {
 		if err.Error() == "redis: nil" {
+			fmt.Println("nil key, set new")
 			// new player
 			err = adtracker.SetClickIDIfAbsent(ctx, openId, req.ClickID)
 			if err != nil {
 				Failure(ctx, err)
 				return
 			}
-
+			fmt.Println("set successfully")
 			// send conversion
 		} else {
 			Failure(ctx, err)
@@ -99,6 +103,7 @@ func Success(ctx *gin.Context, data string) {
 		Data:   data,
 	}
 	ctx.JSON(200, resp)
+
 }
 
 type Resp struct {
